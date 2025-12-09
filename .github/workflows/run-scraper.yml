@@ -2,7 +2,7 @@ name: El Nuevo Día Scraper
 
 on:
   schedule:
-    - cron: "*/1 * * * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch:
 
 jobs:
