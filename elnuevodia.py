@@ -281,14 +281,40 @@ def update_airtable(reporters: list[dict]):
     api = Api(ACCESS_TOKEN)
     table = api.table(BASE_ID, table_name="Reporters")
 
+    print("\nFetching existing reporters from Airtable...")
+    # Fetch all existing reporters to check for duplicates
+    existing_records = table.all()
+    existing_reporters = {}
+
+    # Create a lookup dictionary by name and email
+    for record in existing_records:
+        fields = record.get("fields", {})
+        name = fields.get("Nombre del Reportero", "").strip()
+        email = fields.get("Email", "").strip()
+
+        # Store by both name and email for flexible matching
+        if name:
+            existing_reporters[name.lower()] = record
+        if email:
+            existing_reporters[email.lower()] = record
+
+    print(f"Found {len(existing_records)} existing reporters in Airtable")
+
+    added_count = 0
+    updated_count = 0
+
     for reporter in reporters:
+        reporter_name = reporter.get("reporter_name", "").strip()
+        reporter_email = reporter.get("email", "").strip()
+
+        # Build the record fields
         record = {
             "Medio": reporter.get("media") or "",
             "Tipo de Medio": reporter.get("media_type") or "",
             "Website del Medio": reporter.get("website_medium"),
-            "Nombre del Reportero": reporter.get("reporter_name"),
+            "Nombre del Reportero": reporter_name,
             "Título/Rol": reporter.get("title_role"),
-            "Email": reporter.get("email"),
+            "Email": reporter_email,
             "Teléfono": reporter.get("phone"),
             "Celular": reporter.get("cellular"),
             "Twitter/X": reporter.get("twitter"),
@@ -298,12 +324,36 @@ def update_airtable(reporters: list[dict]):
             "Temas que Cubre": reporter.get("topics_covered"),
         }
 
+        # Add article information
         for i, a in enumerate(reporter.get("articles") or []):
             record[f"Pub #{i+1} – Título"] = a.get("title") or ""
             record[f"Pub #{i+1} – Enlace"] = a.get("link") or ""
             record[f"Pub #{i+1} – Fecha"] = a.get("date")
 
-        table.create(record)
+        # Check if reporter already exists
+        existing_record = None
+        if reporter_name and reporter_name.lower() in existing_reporters:
+            existing_record = existing_reporters[reporter_name.lower()]
+        elif reporter_email and reporter_email.lower() in existing_reporters:
+            existing_record = existing_reporters[reporter_email.lower()]
+
+        if existing_record:
+            # Update existing reporter
+            record_id = existing_record["id"]
+            table.update(record_id, record)
+            print(f"  ✓ Updated: {reporter_name}")
+            updated_count += 1
+        else:
+            # Create new reporter
+            table.create(record)
+            print(f"  + Added: {reporter_name}")
+            added_count += 1
+
+    print(f"\n{'='*50}")
+    print(
+        f"Summary: {added_count} new reporters added, {updated_count} existing reporters updated"
+    )
+    print(f"{'='*50}")
 
 
 def main():
@@ -311,19 +361,11 @@ def main():
 
     reporters_list = extract_reporters(url)
 
-    # ========================================
-    # For testing purposes
-    # ---------------------------------------
-    reporters_list = reporters_list[:5]  # Limit to first 5 for testing
-    # ========================================
-
     reporters = process_reporters_list(reporters_list)
 
     update_airtable(reporters)
 
-    with open("elnuevodia_reporters_detailed.json", "w", encoding="utf-8") as f:
-        json.dump(reporters, f, ensure_ascii=False, indent=4)
-    print("✓ Saved to elnuevodia_reporters_detailed.json")
+    print("All done!")
 
 
 if __name__ == "__main__":
