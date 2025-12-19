@@ -223,7 +223,7 @@ def get_reporters_list_from_articles(url):
                     }
                 )
 
-            time.sleep(random.uniform(1, 2))  # sleep for 1 to 2 seconds
+            time.sleep(random.uniform(3, 5))  # sleep for 3 to 5 seconds
 
         # Remove duplicates based on reporter URL
         unique_reporters = {
@@ -303,7 +303,7 @@ def get_articles(soup: BeautifulSoup) -> list[dict]:
             }
         )
 
-        time.sleep(random.uniform(1, 2))  # sleep for 1 to 2 seconds
+        time.sleep(random.uniform(3, 5))  # sleep for 3 to 5 seconds
 
     return articles
 
@@ -416,7 +416,7 @@ def process_reporters_list(reporters_list: list[dict]) -> list[dict]:
             }
         )
 
-        time.sleep(random.uniform(1, 3))  # sleep for 1 to 3 seconds
+        time.sleep(random.uniform(3, 5))  # sleep for 3 to 5 seconds
 
     print(f"[OK] Completed {len(reporters)} reporters")
     return reporters

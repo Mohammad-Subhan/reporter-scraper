@@ -486,7 +486,7 @@ def main():
 
     reporters = process_reporters_list(reporters_flat)
 
-    update_airtable(reporters[:2])
+    update_airtable(reporters)
 
 
 if __name__ == "__main__":

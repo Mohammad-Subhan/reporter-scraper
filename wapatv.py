@@ -194,7 +194,7 @@ def get_reporters_list_from_articles(url: str) -> list[dict]:
             article_info = get_article_info(article_link)
 
             reporters.extend(article_info)
-            time.sleep(random.uniform(1, 2))
+            time.sleep(random.uniform(3, 5))  # Increased delay to avoid rate limiting
 
         return reporters
 
@@ -209,6 +209,9 @@ def process_news_sources() -> list[dict]:
         print(f"\nProcessing news source: {news_url}")
         reporters = get_reporters_list_from_articles(news_url)
         all_reporters.extend(reporters)
+        
+        # Add delay between processing different news sources
+        time.sleep(random.uniform(3, 5))
 
     return all_reporters
 
@@ -294,7 +297,7 @@ def process_reporters_list(reporters_flat: list[dict]) -> list[dict]:
                 "articles": reporter.get("articles") or [],
             }
         )
-        time.sleep(random.uniform(1, 3))
+        time.sleep(random.uniform(3, 5))
 
     print(f"[OK] Completed {len(processed_reporters)} reporters")
     return processed_reporters
