@@ -134,7 +134,7 @@ def get_articles(soup: BeautifulSoup) -> list[dict]:
             "a", class_="standard-teaser-image-container no-decoration square"
         )
         if anchor and anchor.get("href"):
-            url = "https://www.elnuevodia.com" + anchor["href"]
+            url = ("https://www.elnuevodia.com" + anchor["href"]).rstrip("/")
             article_info = get_article_info(url)
             articles.append(article_info)
 
@@ -248,7 +248,7 @@ def process_reporters_list(reporters_list: list[dict]) -> list[dict]:
 
         media_name = "El Nuevo Día"
         media_type = ""
-        website_url = "https://www.elnuevodia.com/"
+        website_url = "https://www.elnuevodia.com"
 
         reporters.append(
             {
@@ -273,7 +273,7 @@ def process_reporters_list(reporters_list: list[dict]) -> list[dict]:
 
         time.sleep(random.uniform(1, 3))  # sleep for 1 to 3 seconds
 
-    print(f"✓ Completed {len(reporters)} reporters")
+    print(f"[OK] Completed {len(reporters)} reporters")
     return reporters
 
 
@@ -304,8 +304,8 @@ def update_airtable(reporters: list[dict]):
     updated_count = 0
 
     for reporter in reporters:
-        reporter_name = reporter.get("reporter_name", "").strip()
-        reporter_email = reporter.get("email", "").strip()
+        reporter_name = (reporter.get("reporter_name") or "").strip()
+        reporter_email = (reporter.get("email") or "").strip()
 
         # Build the record fields
         record = {
@@ -341,7 +341,7 @@ def update_airtable(reporters: list[dict]):
             # Update existing reporter
             record_id = existing_record["id"]
             table.update(record_id, record)
-            print(f"  ✓ Updated: {reporter_name}")
+            print(f"  [OK] Updated: {reporter_name}")
             updated_count += 1
         else:
             # Create new reporter
@@ -361,6 +361,7 @@ def main():
 
     reporters_list = extract_reporters(url)
 
+    # only last reporter for testing
     reporters = process_reporters_list(reporters_list)
 
     update_airtable(reporters)

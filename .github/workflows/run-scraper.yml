@@ -1,9 +1,9 @@
-name: El Nuevo Día Scraper
+name: Reporter Scraper
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
-  workflow_dispatch:
+    - cron: "0 */5 * * *"  # Every Monday at 9 AM UTC
+  workflow_dispatch:  # Allows manual trigger from GitHub UI
 
 jobs:
   scrape:
@@ -25,6 +25,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
+          playwright install chromium
 
-      - name: Run scraper
-        run: python elnuevodia.py
+      - name: Run all scrapers
+        run: python run_all.py

@@ -1,0 +1,15 @@
+Extracted 38 reporters
+
+Processing 1 reporters...
+[1/1] Odette Aguilar Díaz
+  Warning: Reporter bio not found for https://www.elnuevodia.com/autor/odette-aguilar/
+[OK] Completed 1 reporters
+
+Fetching existing reporters from Airtable...
+Found 20 existing reporters in Airtable
+  + Added: Odette Aguilar Díaz
+
+==================================================
+Summary: 1 new reporters added, 0 existing reporters updated
+==================================================
+All done!

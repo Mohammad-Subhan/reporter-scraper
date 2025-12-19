@@ -1,0 +1,26 @@
+
+Processing 2 reporters...
+[1/2] Ayeza Díaz Rolón
+  Warning: Wait timeout, using partial content
+  Warning: Wait timeout, using partial content
+  Warning: Wait timeout, using partial content
+  Warning: Wait timeout, using partial content
+  Warning: Wait timeout, using partial content
+[2/2] Carlos Antonio Otero
+  Warning: Wait timeout, using partial content
+  Warning: Wait timeout, using partial content
+  Warning: Wait timeout, using partial content
+  Warning: Wait timeout, using partial content
+  Warning: Wait timeout, using partial content
+[OK] Completed 2 reporters
+Updating Airtable with 2 reporters...
+
+Fetching existing reporters from Airtable...
+Found 20 existing reporters in Airtable
+  [OK] Updated: Ayeza Díaz Rolón
+  [OK] Updated: Carlos Antonio Otero
+
+==================================================
+Summary: 0 new reporters added, 2 existing reporters updated
+==================================================
+All done!
