@@ -113,17 +113,15 @@ def get_html_playwright(url: str):
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
-            page.goto(url)
 
             # Try to wait for content, but continue if it times out
             try:
-                page.wait_for_load_state("networkidle", timeout=10000)
-                page.wait_for_timeout(2000)
+                page.goto(url)
+                page.wait_for_load_state("networkidle", timeout=20000)
             except Exception as wait_error:
                 print(f"  Warning: Wait timeout, using partial content")
 
             # Always try to get content even if wait failed
-            page.wait_for_load_state("domcontentloaded")
             html_content = page.content()
             browser.close()
             return html_content
@@ -197,16 +195,23 @@ def get_reporter_info_from_article(article_div):
 def get_reporters_list_from_articles(url):
     p, browser, page = initialize_playwright()
     try:
-        page.goto(url)
+        # Increase timeout and use domcontentloaded for faster loading
+        try:
+            page.goto(url)
+            page.wait_for_load_state("networkidle", timeout=15000)
+        except Exception as goto_error:
+            print(
+                f"  Warning: Timeout on initial page load, continuing with partial content..."
+            )
+
         load_more_button = page.locator(
             "#dycol-trigger-63d64ab0-910a-11ec-b48d-b7ebc0fc5bca"
         )
 
         while load_more_button.is_visible():
             load_more_button.click()
-
-            # wait for content to load
-            page.wait_for_timeout(5000)
+            
+            time.sleep(3)  # wait for content to load
 
         html_content = page.content()
         soup = BeautifulSoup(html_content, "html.parser")
@@ -223,7 +228,7 @@ def get_reporters_list_from_articles(url):
                     }
                 )
 
-            time.sleep(random.uniform(3, 5))  # sleep for 3 to 5 seconds
+            time.sleep(random.uniform(5, 10))  # sleep for 5 to 10 seconds
 
         # Remove duplicates based on reporter URL
         unique_reporters = {
@@ -303,7 +308,7 @@ def get_articles(soup: BeautifulSoup) -> list[dict]:
             }
         )
 
-        time.sleep(random.uniform(3, 5))  # sleep for 3 to 5 seconds
+        time.sleep(random.uniform(5, 10))  # sleep for 5 to 10 seconds
 
     return articles
 
@@ -416,7 +421,7 @@ def process_reporters_list(reporters_list: list[dict]) -> list[dict]:
             }
         )
 
-        time.sleep(random.uniform(3, 5))  # sleep for 3 to 5 seconds
+        time.sleep(random.uniform(5, 10))  # sleep for 5 to 10 seconds
 
     print(f"[OK] Completed {len(reporters)} reporters")
     return reporters

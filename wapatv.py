@@ -51,12 +51,11 @@ def get_html_playwright(url: str):
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
-            page.goto(url)
 
             # Try to wait for content, but continue if it times out
             try:
-                page.wait_for_load_state("networkidle", timeout=2000)
-                # page.wait_for_timeout(2000)
+                page.goto(url)
+                page.wait_for_load_state("networkidle", timeout=20000)
             except Exception as wait_error:
                 print(f"  Warning: Wait timeout, using partial content")
 
@@ -73,7 +72,7 @@ def get_html_playwright(url: str):
 def get_article_info(url: str) -> list[dict]:
     """Fetch article information from a given URL"""
     try:
-        html_content = get_html_requests(url)
+        html_content = get_html_playwright(url)
         if not html_content:
             print(f"  Warning: No content found for {url}")
             return {}
@@ -139,6 +138,11 @@ def get_reporters_list_from_articles(url: str) -> list[dict]:
     try:
         page.goto(url)
 
+        try:
+            page.wait_for_load_state("networkidle", timeout=15000)
+        except Exception as goto_error:
+            print(f"  Warning: Wait timeout, using partial content")
+
         # Click "Ver más" button 2 times to load more articles
         i = 1
         while i <= 2:
@@ -146,16 +150,19 @@ def get_reporters_list_from_articles(url: str) -> list[dict]:
                 # Look for the "Ver más" (See more) button
                 load_more_button = page.locator("#trigger-next-1444330")
 
-                if load_more_button.is_visible():
+                if load_more_button.is_visible(timeout=5000):
                     print(f"  Clicking 'See More' button {i}/2")
-                    load_more_button.click()
+                    # Use force=True to bypass ad overlay interceptions
+                    load_more_button.click(force=True, timeout=10000)
                     page.wait_for_timeout(20000)
                     i += 1
                 else:
                     print(f"  No more 'See More' button found after {i-1} clicks")
                     break
             except Exception as e:
-                print(f"  Could not click more: {e}")
+                print(
+                    f"  Could not click more (continuing with current content): {str(e)[:100]}"
+                )
                 break
 
         html_content = page.content()
@@ -209,9 +216,9 @@ def process_news_sources() -> list[dict]:
         print(f"\nProcessing news source: {news_url}")
         reporters = get_reporters_list_from_articles(news_url)
         all_reporters.extend(reporters)
-        
+
         # Add delay between processing different news sources
-        time.sleep(random.uniform(3, 5))
+        time.sleep(random.uniform(5, 10))
 
     return all_reporters
 
