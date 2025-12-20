@@ -1,11 +1,11 @@
 import requests
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
+from playwright.async_api import async_playwright
 import json
 from pyairtable import Api
 import os
 from dotenv import load_dotenv
-import time
+import asyncio
 import random
 
 load_dotenv()
@@ -85,10 +85,10 @@ authors = [
 ]
 
 
-def initialize_playwright():
-    p = sync_playwright().start()
-    browser = p.chromium.launch(headless=True)
-    page = browser.new_page()
+async def initialize_playwright():
+    p = await async_playwright().start()
+    browser = await p.chromium.launch(headless=True)
+    page = await browser.new_page()
     return p, browser, page
 
 
@@ -108,22 +108,22 @@ def get_html_requests(url: str):
         return None
 
 
-def get_html_playwright(url: str):
+async def get_html_playwright(url: str):
     try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            page = browser.new_page()
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page()
 
             # Try to wait for content, but continue if it times out
             try:
-                page.goto(url)
-                page.wait_for_load_state("networkidle", timeout=20000)
+                await page.goto(url)
+                await page.wait_for_load_state("networkidle", timeout=20000)
             except Exception as wait_error:
                 print(f"  Warning: Wait timeout, using partial content")
 
             # Always try to get content even if wait failed
-            html_content = page.content()
-            browser.close()
+            html_content = await page.content()
+            await browser.close()
             return html_content
 
     except Exception as e:
@@ -131,8 +131,8 @@ def get_html_playwright(url: str):
         return None
 
 
-def get_reporters_list(url):
-    html_content = get_html_playwright(url)
+async def get_reporters_list(url):
+    html_content = await get_html_playwright(url)
     if not html_content:
         return []
 
@@ -166,14 +166,14 @@ def get_reporters_list(url):
     return reporters_profiles
 
 
-def get_reporter_info_from_article(article_div):
+async def get_reporter_info_from_article(article_div):
     article_link = article_div.find("a", class_="tnt-asset-link")
     if not article_link or not article_link.has_attr("href"):
         return None, None
 
     article_url = ("https://www.elvocero.com" + article_link["href"]).rstrip("/")
 
-    html_content = get_html_playwright(article_url)
+    html_content = await get_html_playwright(article_url)
     if not html_content:
         return None, None
 
@@ -192,13 +192,13 @@ def get_reporter_info_from_article(article_div):
     return reporter_name, reporter_link
 
 
-def get_reporters_list_from_articles(url):
-    p, browser, page = initialize_playwright()
+async def get_reporters_list_from_articles(url):
+    p, browser, page = await initialize_playwright()
     try:
         # Increase timeout and use domcontentloaded for faster loading
         try:
-            page.goto(url)
-            page.wait_for_load_state("networkidle", timeout=15000)
+            await page.goto(url)
+            await page.wait_for_load_state("networkidle", timeout=15000)
         except Exception as goto_error:
             print(
                 f"  Warning: Timeout on initial page load, continuing with partial content..."
@@ -208,18 +208,18 @@ def get_reporters_list_from_articles(url):
             "#dycol-trigger-63d64ab0-910a-11ec-b48d-b7ebc0fc5bca"
         )
 
-        while load_more_button.is_visible():
-            load_more_button.click()
+        while await load_more_button.is_visible():
+            await load_more_button.click()
             
-            time.sleep(3)  # wait for content to load
+            await asyncio.sleep(3)  # wait for content to load
 
-        html_content = page.content()
+        html_content = await page.content()
         soup = BeautifulSoup(html_content, "html.parser")
 
         news_article_divs = list(soup.find_all("div", class_="asset"))
         reporters = []
         for article_div in news_article_divs:
-            reporter_name, reporter_link = get_reporter_info_from_article(article_div)
+            reporter_name, reporter_link = await get_reporter_info_from_article(article_div)
             if reporter_name and reporter_link:
                 reporters.append(
                     {
@@ -228,7 +228,7 @@ def get_reporters_list_from_articles(url):
                     }
                 )
 
-            time.sleep(random.uniform(5, 10))  # sleep for 5 to 10 seconds
+            await asyncio.sleep(random.uniform(5, 10))  # sleep for 5 to 10 seconds
 
         # Remove duplicates based on reporter URL
         unique_reporters = {
@@ -237,13 +237,13 @@ def get_reporters_list_from_articles(url):
         return list(unique_reporters)
 
     finally:
-        browser.close()
-        p.stop()
+        await browser.close()
+        await p.stop()
 
 
-def get_article_info(url: str) -> dict:
+async def get_article_info(url: str) -> dict:
     try:
-        html_content = get_html_playwright(url)
+        html_content = await get_html_playwright(url)
 
         soup = BeautifulSoup(html_content, "html.parser")
 
@@ -273,7 +273,7 @@ def get_article_info(url: str) -> dict:
         return {}
 
 
-def get_articles(soup: BeautifulSoup) -> list[dict]:
+async def get_articles(soup: BeautifulSoup) -> list[dict]:
     article_div = soup.find("div", id="posts")
     if not article_div:
         print("  Warning: No articles section found")
@@ -298,7 +298,7 @@ def get_articles(soup: BeautifulSoup) -> list[dict]:
         else:
             article_link = ""
 
-        article_info = get_article_info(article_link)
+        article_info = await get_article_info(article_link)
 
         articles.append(
             {
@@ -308,14 +308,14 @@ def get_articles(soup: BeautifulSoup) -> list[dict]:
             }
         )
 
-        time.sleep(random.uniform(5, 10))  # sleep for 5 to 10 seconds
+        await asyncio.sleep(random.uniform(5, 10))  # sleep for 5 to 10 seconds
 
     return articles
 
 
-def extract_reporter_info(url: str) -> dict:
+async def extract_reporter_info(url: str) -> dict:
     try:
-        html_content = get_html_playwright(url)
+        html_content = await get_html_playwright(url)
         if not html_content:
             print(f"  Warning: No content found for {url}")
             return {}
@@ -366,7 +366,7 @@ def extract_reporter_info(url: str) -> dict:
             elif "mailto:" in social_link:
                 reporter_email = social_link.replace("mailto:", "")
 
-        articles = get_articles(soup)
+        articles = await get_articles(soup)
 
         return {
             "name": reporter_name,
@@ -385,7 +385,7 @@ def extract_reporter_info(url: str) -> dict:
         return {}
 
 
-def process_reporters_list(reporters_list: list[dict]) -> list[dict]:
+async def process_reporters_list(reporters_list: list[dict]) -> list[dict]:
     print(f"\nProcessing {len(reporters_list)} reporters...")
     reporters = []
 
@@ -396,7 +396,7 @@ def process_reporters_list(reporters_list: list[dict]) -> list[dict]:
         reporter_title = reporter.get("title") or ""
 
         print(f"[{idx}/{len(reporters_list)}] {reporter_name}")
-        reporter_info = extract_reporter_info(reporter_url)
+        reporter_info = await extract_reporter_info(reporter_url)
 
         media_name = "El Vocero"
         media_type = ""
@@ -421,7 +421,7 @@ def process_reporters_list(reporters_list: list[dict]) -> list[dict]:
             }
         )
 
-        time.sleep(random.uniform(5, 10))  # sleep for 5 to 10 seconds
+        await asyncio.sleep(random.uniform(5, 10))  # sleep for 5 to 10 seconds
 
     print(f"[OK] Completed {len(reporters)} reporters")
     return reporters
@@ -505,8 +505,8 @@ def update_airtable(reporters: list[dict]):
     print(f"{'='*50}")
 
 
-def main():
-    reporters_list = get_reporters_list_from_articles(
+async def main():
+    reporters_list = await get_reporters_list_from_articles(
         "https://www.elvocero.com/lo-mas-reciente/lo-m-s-reciente/collection_63d64ab0-910a-11ec-b48d-b7ebc0fc5bca.html"
     )
 
@@ -527,7 +527,7 @@ def main():
     }.values()
     reporters_list = list(unique_reporters)
 
-    reporters = process_reporters_list(reporters_list)
+    reporters = await process_reporters_list(reporters_list)
 
     update_airtable(reporters)
 
@@ -535,4 +535,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
