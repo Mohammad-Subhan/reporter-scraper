@@ -46,10 +46,10 @@ def get_html_playwright(url: str):
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
-            page.goto(url)
 
             # Try to wait for content, but continue if it times out
             try:
+                page.goto(url)
                 page.wait_for_load_state("networkidle", timeout=10000)
                 page.wait_for_timeout(5000)
             except Exception as wait_error:
