@@ -14,6 +14,7 @@ SCRIPTS = [
     "sincimillas.py",
     "telemundopr.py",
     "wapatv.py",
+    "twitter.py",
 ]
 
 LOG_DIR = "logs"
