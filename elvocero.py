@@ -210,7 +210,7 @@ async def get_reporters_list_from_articles(url):
 
         while await load_more_button.is_visible():
             await load_more_button.click()
-            
+
             await asyncio.sleep(3)  # wait for content to load
 
         html_content = await page.content()
@@ -219,7 +219,9 @@ async def get_reporters_list_from_articles(url):
         news_article_divs = list(soup.find_all("div", class_="asset"))
         reporters = []
         for article_div in news_article_divs:
-            reporter_name, reporter_link = await get_reporter_info_from_article(article_div)
+            reporter_name, reporter_link = await get_reporter_info_from_article(
+                article_div
+            )
             if reporter_name and reporter_link:
                 reporters.append(
                     {
@@ -489,6 +491,14 @@ def update_airtable(reporters: list[dict]):
         if existing_record:
             # Update existing reporter
             record_id = existing_record["id"]
+
+            # Don't overwrite existing Twitter/X if the new value is empty
+            existing_twitter = (
+                existing_record.get("fields", {}).get("Twitter/X", "").strip()
+            )
+            if existing_twitter and not record.get("Twitter/X"):
+                record["Twitter/X"] = existing_twitter
+
             table.update(record_id, record)
             print(f"  [OK] Updated: {reporter_name}")
             updated_count += 1

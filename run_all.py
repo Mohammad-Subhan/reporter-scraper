@@ -15,6 +15,7 @@ SCRIPTS = [
     "telemundopr.py",
     "wapatv.py",
     "twitter.py",
+    "update_twitter.py",
 ]
 
 LOG_DIR = "logs"

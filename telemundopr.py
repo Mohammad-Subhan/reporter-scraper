@@ -499,6 +499,14 @@ def update_airtable(reporters: list[dict]):
         if existing_record:
             # Update existing reporter
             record_id = existing_record["id"]
+
+            # Don't overwrite existing Twitter/X if the new value is empty
+            existing_twitter = (
+                existing_record.get("fields", {}).get("Twitter/X", "").strip()
+            )
+            if existing_twitter and not record.get("Twitter/X"):
+                record["Twitter/X"] = existing_twitter
+
             table.update(record_id, record)
             print(f"  [OK] Updated: {reporter_name}")
             updated_count += 1
