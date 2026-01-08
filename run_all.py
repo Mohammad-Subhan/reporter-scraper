@@ -3,17 +3,17 @@ import sys
 import os
 
 SCRIPTS = [
-    # "elnuevodia.py",
-    # "elvocero.py",
-    # "laperladelsur.py",
-    # "claridad.py",
-    # "metro.py",
-    # "newsismybusiness.py",
-    # "noticel.py",
-    # "primerahora.py",
-    # "sincimillas.py",
-    # "telemundopr.py",
-    # "wapatv.py",
+    "elnuevodia.py",
+    "elvocero.py",
+    "laperladelsur.py",
+    "claridad.py",
+    "metro.py",
+    "newsismybusiness.py",
+    "noticel.py",
+    "primerahora.py",
+    "sincimillas.py",
+    "telemundopr.py",
+    "wapatv.py",
     "twitter.py",
     "update_twitter.py",
 ]
