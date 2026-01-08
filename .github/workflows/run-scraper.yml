@@ -12,6 +12,7 @@ jobs:
     env:
       AIRTABLE_ACCESS_TOKEN: ${{ secrets.AIRTABLE_ACCESS_TOKEN }}
       AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+      TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
 
     steps:
       - name: Checkout repo
