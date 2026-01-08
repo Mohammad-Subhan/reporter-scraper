@@ -11,8 +11,6 @@ ACCESS_TOKEN = os.environ.get("AIRTABLE_ACCESS_TOKEN")
 BASE_ID = os.environ.get("AIRTABLE_BASE_ID")
 TWITTER_API_KEY = os.environ.get("TWITTER_API_KEY")
 
-print(TWITTER_API_KEY)
-
 queries = [
     "periodista Puerto Rico",
     "reportero Puerto Rico",
