@@ -58,6 +58,27 @@ echo "=========================================="
 
 gcloud config set project "${PROJECT_ID}"
 
+# New service accounts may take a few seconds before add-iam-policy-binding accepts them.
+wait_for_service_account_visible() {
+  local email="$1"
+  local label="$2"
+  local max="${3:-30}"
+  local delay="${4:-2}"
+  local i
+  for ((i=1; i<=max; i++)); do
+    if gcloud iam service-accounts describe "${email}" --project="${PROJECT_ID}" &>/dev/null; then
+      if ((i > 1)); then
+        echo "${label}: OK (${email}) after IAM propagation"
+      fi
+      return 0
+    fi
+    echo "${label}: waiting for ${email} (${i}/${max})..."
+    sleep "${delay}"
+  done
+  echo "ERROR: ${label} still not visible: ${email}"
+  return 1
+}
+
 echo ""
 echo "[1/8] Enabling APIs..."
 gcloud services enable \
@@ -95,6 +116,7 @@ else
     --project="${PROJECT_ID}" \
     --display-name="Reporter scraper Cloud Run Job"
 fi
+wait_for_service_account_visible "${RUNTIME_SA_EMAIL}" "Runtime service account"
 for ROLE in roles/bigquery.user roles/bigquery.dataEditor; do
   gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
     --member="serviceAccount:${RUNTIME_SA_EMAIL}" \
@@ -168,6 +190,7 @@ else
     --project="${PROJECT_ID}" \
     --display-name="Reporter scraper Cloud Scheduler (run job)"
 fi
+wait_for_service_account_visible "${SCHEDULER_SA_EMAIL}" "Scheduler invoker service account"
 gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
   --member="serviceAccount:${SCHEDULER_SA_EMAIL}" \
   --role="roles/run.developer" \
