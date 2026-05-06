@@ -1,19 +1,13 @@
 import requests
 import os
 from dotenv import load_dotenv
-from pyairtable import Api
 import time
+
+from bigquery_sync import fetch_all_reporter_rows, update_reporter_twitter_only
 
 load_dotenv()
 
-# API Configuration
-TWITTER_API_URL = "https://api.twitterapi.io/twitter/user/lookup"
 TWITTER_API_KEY = os.environ.get("TWITTER_API_KEY")
-
-# Airtable Configuration
-ACCESS_TOKEN = os.environ.get("AIRTABLE_ACCESS_TOKEN")
-BASE_ID = os.environ.get("AIRTABLE_BASE_ID")
-TABLE_NAME = "Reporters"  # The table to fetch reporters from
 
 
 def fetch_twitter_profile(name: str) -> dict:
@@ -40,7 +34,6 @@ def fetch_twitter_profile(name: str) -> dict:
         users = data.get("users", [])
 
         if users:
-            # Return the first match
             user = users[0]
             print(f"  + Found match")
             return {
@@ -60,99 +53,67 @@ def fetch_twitter_profile(name: str) -> dict:
         print(f"  Error fetching Twitter profile: {e}")
         return None
     finally:
-        time.sleep(2)  # Rate limiting
+        time.sleep(2)
 
 
-def get_reporters_from_airtable() -> list:
-    """
-    Fetch all reporters from Airtable 'Reporters copy' table
-
-    Returns:
-        list of reporter records
-    """
-    print("Connecting to Airtable...")
-    api = Api(ACCESS_TOKEN)
-    table = api.table(BASE_ID, table_name=TABLE_NAME)
-
-    print(f"Fetching reporters from '{TABLE_NAME}' table...")
-    records = table.all()
+def get_reporters_from_bigquery() -> list:
+    print("Connecting to BigQuery...")
+    records = fetch_all_reporter_rows()
     print(f"+ Found {len(records)} reporters\n")
-
     return records
 
 
-def update_reporter_twitter(record_id: str, twitter_url: str):
-    """
-    Update a reporter's Twitter/X field in Airtable
-
-    Args:
-        record_id: The Airtable record ID
-        twitter_url: The Twitter profile URL to update
-    """
-    api = Api(ACCESS_TOKEN)
-    table = api.table(BASE_ID, table_name=TABLE_NAME)
-
-    try:
-        table.update(record_id, {"Twitter/X": twitter_url})
-        print(f"  + Updated record in Airtable")
-    except Exception as e:
-        print(f"  x Error updating Airtable: {e}")
-
-
 def main():
-    """
-    Main function to fetch Twitter profiles for all reporters in the list
-    """
     print("=" * 60)
     print("Twitter Profile Fetcher for Reporters")
     print("=" * 60 + "\n")
 
-    # Get reporters from Airtable
-    reporters = get_reporters_from_airtable()
+    reporters = get_reporters_from_bigquery()
 
-    # Track statistics
     found_count = 0
     not_found_count = 0
     already_has_twitter = 0
     updated_count = 0
 
-    # Process each reporter
-    for i, record in enumerate(reporters, 1):
-        fields = record.get("fields", {})
-        reporter_name = fields.get("Nombre del Reportero", "").strip()
-        media_outlet = fields.get("Medio", "").strip()
-        existing_twitter = fields.get("Twitter/X", "").strip()
+    for i, row in enumerate(reporters, 1):
+        reporter_name = (row.get("Nombre del Reportero") or "").strip()
+        existing_twitter = (row.get("Twitter/X") or "").strip()
+        record_id = row.get("record_id")
 
         if not reporter_name:
             print(f"{i}. Skipping - No name provided")
             continue
 
+        if not record_id:
+            print(f"{i}. Skipping - No record_id")
+            continue
+
         print(f"{i}. Processing: {reporter_name}")
 
-        # Skip if already has Twitter
         if existing_twitter:
             print(f"  o Already has Twitter: {existing_twitter}")
             already_has_twitter += 1
             continue
 
-        # Fetch Twitter profile
         twitter_data = fetch_twitter_profile(reporter_name)
 
         if twitter_data and twitter_data.get("twitter_url"):
             print(f"  + Found: {twitter_data['twitter_url']}")
             print(f"    - Screen name: @{twitter_data['screen_name']}")
 
-            # Update Airtable
-            update_reporter_twitter(record["id"], twitter_data["twitter_url"])
-            found_count += 1
-            updated_count += 1
+            try:
+                update_reporter_twitter_only(record_id, twitter_data["twitter_url"])
+                print(f"  + Updated record in BigQuery")
+                found_count += 1
+                updated_count += 1
+            except Exception as e:
+                print(f"  x Error updating BigQuery: {e}")
         else:
             print(f"  x No Twitter profile found")
             not_found_count += 1
 
         print()
 
-    # Print summary
     print("=" * 60)
     print("SUMMARY")
     print("=" * 60)
@@ -160,7 +121,7 @@ def main():
     print(f"Already had Twitter: {already_has_twitter}")
     print(f"Twitter profiles found: {found_count}")
     print(f"Not found: {not_found_count}")
-    print(f"Records updated in Airtable: {updated_count}")
+    print(f"Records updated in BigQuery: {updated_count}")
     print("=" * 60)
 
 

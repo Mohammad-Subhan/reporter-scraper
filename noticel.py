@@ -1,6 +1,5 @@
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
-from pyairtable import Api
 import os
 from dotenv import load_dotenv
 import time
@@ -8,8 +7,8 @@ import random
 
 load_dotenv()
 
-ACCESS_TOKEN = os.environ.get("AIRTABLE_ACCESS_TOKEN")
-BASE_ID = os.environ.get("AIRTABLE_BASE_ID")
+from bigquery_sync import upsert_reporters_merge
+
 
 
 reporters_profiles = [
@@ -312,90 +311,11 @@ def process_reporters_list(reporters_list: list[dict]) -> list[dict]:
     return reporters
 
 
-def update_airtable(reporters: list[dict]):
-    print(f"Updating Airtable with {len(reporters)} reporters...")
-    api = Api(ACCESS_TOKEN)
-    table = api.table(BASE_ID, table_name="Reporters")
-
-    print("\nFetching existing reporters from Airtable...")
-    # Fetch all existing reporters to check for duplicates
-    existing_records = table.all()
-    existing_reporters = {}
-
-    # Create a lookup dictionary by name and email
-    for record in existing_records:
-        fields = record.get("fields", {})
-        name = fields.get("Nombre del Reportero", "").strip()
-
-        # Store by both name and email for flexible matching
-        if name:
-            existing_reporters[name.lower()] = record
-
-    print(f"Found {len(existing_records)} existing reporters in Airtable")
-
-    added_count = 0
-    updated_count = 0
-
-    for reporter in reporters:
-        reporter_name = (reporter.get("reporter_name") or "").strip()
-
-        record = {
-            "Medio": reporter.get("media") or "",
-            "Tipo de Medio": reporter.get("media_type") or "",
-            "Website del Medio": reporter.get("website_medium"),
-            "Nombre del Reportero": reporter_name,
-            "Título/Rol": reporter.get("title_role"),
-            "Email": reporter.get("email"),
-            "Teléfono": reporter.get("phone"),
-            "Celular": reporter.get("cellular"),
-            "Twitter/X": reporter.get("twitter"),
-            "LinkedIn": reporter.get("linkedin"),
-            "Instagram": reporter.get("instagram"),
-            "Facebook": reporter.get("facebook"),
-            "Temas que Cubre": reporter.get("topics_covered"),
-        }
-
-        for i, a in enumerate(reporter.get("articles") or []):
-            record[f"Pub #{i+1} – Título"] = a.get("title") or ""
-            record[f"Pub #{i+1} – Enlace"] = a.get("link") or ""
-            record[f"Pub #{i+1} – Fecha"] = a.get("date") or ""
-
-        # Check if reporter already exists
-        existing_record = None
-        if reporter_name and reporter_name.lower() in existing_reporters:
-            existing_record = existing_reporters[reporter_name.lower()]
-
-        if existing_record:
-            # Update existing reporter
-            record_id = existing_record["id"]
-
-            # Don't overwrite existing Twitter/X if the new value is empty
-            existing_twitter = (
-                existing_record.get("fields", {}).get("Twitter/X", "").strip()
-            )
-            if existing_twitter and not record.get("Twitter/X"):
-                record["Twitter/X"] = existing_twitter
-
-            table.update(record_id, record)
-            print(f"  [OK] Updated: {reporter_name}")
-            updated_count += 1
-        else:
-            # Create new reporter
-            table.create(record)
-            print(f"  + Added: {reporter_name}")
-            added_count += 1
-
-    print(f"\n{'='*50}")
-    print(
-        f"Summary: {added_count} new reporters added, {updated_count} existing reporters updated"
-    )
-    print(f"{'='*50}")
-
 
 def main():
     reporters = process_reporters_list(reporters_profiles)
 
-    update_airtable(reporters)
+    upsert_reporters_merge(reporters, "noticel.py", match_emails=False)
 
     print("All Done!")
 

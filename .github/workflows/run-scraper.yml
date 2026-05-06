@@ -1,27 +1,32 @@
 name: Reporter Scraper
 
+# Production schedule: Cloud Scheduler → Cloud Run Job (see scripts/deploy_gcp_scheduler_run_job.sh).
 on:
-  schedule:
-    - cron: "0 0 * * 1"  # Runs every Monday
-  workflow_dispatch:  # Allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
 
     env:
-      AIRTABLE_ACCESS_TOKEN: ${{ secrets.AIRTABLE_ACCESS_TOKEN }}
-      AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+      GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
+      GOOGLE_CLOUD_PROJECT: ${{ secrets.GCP_PROJECT }}
+      BIGQUERY_DATASET: ${{ secrets.BIGQUERY_DATASET }}
       TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.x"  # Always use the latest stable Python version
+          python-version: "3.12"
 
       - name: Install dependencies
         run: |
