@@ -4,7 +4,11 @@ FROM mcr.microsoft.com/playwright/python:v1.57.0-jammy
 ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
+COPY scripts/normalize_requirements_for_docker.py /tmp/normalize_requirements_for_docker.py
 COPY requirements.txt .
+RUN python3 /tmp/normalize_requirements_for_docker.py requirements.txt \
+    && rm /tmp/normalize_requirements_for_docker.py
+
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .

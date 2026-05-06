@@ -1,0 +1,4 @@
+* text=auto
+
+# Cloud Build / pip expect UTF-8 + LF. Prefer UTF-8 (not UTF-16) for requirements.txt in your editor.
+requirements.txt text eol=lf
