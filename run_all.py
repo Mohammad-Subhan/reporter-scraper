@@ -57,5 +57,6 @@ if failed_scripts:
     print("[FAIL] Failed scripts:")
     for s in failed_scripts:
         print(f"  - {s}")
+    sys.exit(1)
 else:
     print("[OK] All scripts ran successfully")

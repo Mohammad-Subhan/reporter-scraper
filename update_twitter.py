@@ -3,7 +3,12 @@ import os
 from dotenv import load_dotenv
 import time
 
-from bigquery_sync import fetch_all_reporter_rows, update_reporter_twitter_only
+from bigquery_sync import (
+    fetch_all_reporter_rows,
+    update_reporter_twitter_only,
+    COL_NOMBRE_DEL_REPORTERO,
+    COL_TWITTER_X,
+)
 
 load_dotenv()
 
@@ -76,8 +81,8 @@ def main():
     updated_count = 0
 
     for i, row in enumerate(reporters, 1):
-        reporter_name = (row.get("Nombre del Reportero") or "").strip()
-        existing_twitter = (row.get("Twitter/X") or "").strip()
+        reporter_name = (row.get(COL_NOMBRE_DEL_REPORTERO) or "").strip()
+        existing_twitter = (row.get(COL_TWITTER_X) or "").strip()
         record_id = row.get("record_id")
 
         if not reporter_name:
