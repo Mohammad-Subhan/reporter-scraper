@@ -216,12 +216,20 @@ def _as_str(v: Any) -> str:
 
 def _bq_insert_row(record_id: str, fields: dict[str, str]) -> None:
     client = _client()
-    row = {RECORD_ID_FIELD: record_id}
-    for k in BQ_DATA_FIELDS:
-        row[k] = fields[k]
-    errors = client.insert_rows_json(_full_table_id(), [row])
-    if errors:
-        raise RuntimeError(f"BigQuery insert_rows_json failed: {errors}")
+    qp: list[bigquery.ScalarQueryParameter] = [
+        bigquery.ScalarQueryParameter("rid", "STRING", record_id)
+    ]
+    cols = [f"`{RECORD_ID_FIELD}`"]
+    vals = ["@rid"]
+    for i, k in enumerate(BQ_DATA_FIELDS):
+        pname = f"f{i}"
+        qp.append(bigquery.ScalarQueryParameter(pname, "STRING", fields.get(k, "")))
+        cols.append(f"`{k}`")
+        vals.append(f"@{pname}")
+    sql = f"INSERT INTO {_table_ref()} ({', '.join(cols)}) VALUES ({', '.join(vals)})"
+    client.query(
+        sql, job_config=bigquery.QueryJobConfig(query_parameters=qp)
+    ).result()
 
 
 def update_reporter_twitter_only(record_id: str, twitter_url: str) -> None:
@@ -322,6 +330,7 @@ def upsert_reporters_merge(
 
     added_count = 0
     updated_count = 0
+    error_count = 0
     for reporter in reporters:
         fields = row_for_bigquery(reporter)
         reporter_name = (fields.get(COL_NOMBRE_DEL_REPORTERO) or "").strip()
@@ -340,26 +349,35 @@ def upsert_reporters_merge(
         if existing_record:
             _apply_twitter_preserve(existing_record, fields)
             rid = existing_record[RECORD_ID_FIELD]
-            _bq_update_row(rid, fields)
-            print(f"  [OK] Updated: {reporter_name}")
-            updated_count += 1
+            try:
+                _bq_update_row(rid, fields)
+                print(f"  [OK] Updated: {reporter_name}")
+                updated_count += 1
+            except Exception as e:
+                print(f"  ! Error updating {reporter_name}: {e}")
+                error_count += 1
         else:
             rid = str(uuid.uuid4())
-            _bq_insert_row(rid, fields)
-            new_row = {
-                RECORD_ID_FIELD: rid,
-                **{k: fields[k] for k in BQ_DATA_FIELDS},
-            }
-            if reporter_name:
-                existing_by_name[reporter_name.lower()] = new_row
-            if match_emails and reporter_email:
-                existing_by_email[reporter_email.lower()] = new_row
-            print(f"  + Added: {reporter_name}")
-            added_count += 1
+            try:
+                _bq_insert_row(rid, fields)
+                new_row = {
+                    RECORD_ID_FIELD: rid,
+                    **{k: fields[k] for k in BQ_DATA_FIELDS},
+                }
+                if reporter_name:
+                    existing_by_name[reporter_name.lower()] = new_row
+                if match_emails and reporter_email:
+                    existing_by_email[reporter_email.lower()] = new_row
+                print(f"  + Added: {reporter_name}")
+                added_count += 1
+            except Exception as e:
+                print(f"  ! Error adding {reporter_name}: {e}")
+                error_count += 1
 
     print(f"\n{'='*50}")
     print(
         f"Summary: {added_count} new reporters added, {updated_count} existing reporters updated"
+        + (f", {error_count} errors" if error_count else "")
     )
     print(f"{'='*50}")
 

@@ -33,6 +33,9 @@ def fetch_twitter_profile(name: str) -> dict:
 
     try:
         response = requests.get(search_url, headers=headers, params=params)
+        if response.status_code == 402:
+            print(f"  ! Twitter API quota exhausted (402)")
+            raise requests.exceptions.HTTPError(response=response)
         response.raise_for_status()
 
         data = response.json()
@@ -54,6 +57,11 @@ def fetch_twitter_profile(name: str) -> dict:
             print(f"  No Twitter profile found")
             return None
 
+    except requests.exceptions.HTTPError as e:
+        if e.response is not None and e.response.status_code == 402:
+            raise
+        print(f"  Error fetching Twitter profile: {e}")
+        return None
     except requests.exceptions.RequestException as e:
         print(f"  Error fetching Twitter profile: {e}")
         return None
@@ -79,6 +87,7 @@ def main():
     not_found_count = 0
     already_has_twitter = 0
     updated_count = 0
+    quota_exhausted = False
 
     for i, row in enumerate(reporters, 1):
         reporter_name = (row.get(COL_NOMBRE_DEL_REPORTERO) or "").strip()
@@ -100,7 +109,12 @@ def main():
             already_has_twitter += 1
             continue
 
-        twitter_data = fetch_twitter_profile(reporter_name)
+        try:
+            twitter_data = fetch_twitter_profile(reporter_name)
+        except requests.exceptions.HTTPError:
+            print("\n! Twitter API quota exhausted — stopping early.")
+            quota_exhausted = True
+            break
 
         if twitter_data and twitter_data.get("twitter_url"):
             print(f"  + Found: {twitter_data['twitter_url']}")
@@ -127,6 +141,8 @@ def main():
     print(f"Twitter profiles found: {found_count}")
     print(f"Not found: {not_found_count}")
     print(f"Records updated in BigQuery: {updated_count}")
+    if quota_exhausted:
+        print("Twitter API quota exhausted — run stopped early")
     print("=" * 60)
 
 
